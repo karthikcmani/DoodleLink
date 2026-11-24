@@ -9,12 +9,17 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -33,12 +38,27 @@ fun ConnectionDialog(
 ) {
     if (!viewModel.isConnectDialogOpen) return
 
-    var hostInput by remember { mutableStateOf(viewModel.networkClient.host.ifEmpty { "192.168." }) }
+    val state = viewModel.connectionState
+    val isConnected = state.isConnected
+
+    // 0: Wi-Fi / Hotspot, 1: USB Cable (ADB)
+    var selectedTab by remember {
+        mutableIntStateOf(if (viewModel.networkClient.host == "127.0.0.1") 1 else 0)
+    }
+    var wifiHostInput by remember {
+        mutableStateOf(
+            if (viewModel.networkClient.host.isNotEmpty() && viewModel.networkClient.host != "127.0.0.1") {
+                viewModel.networkClient.host
+            } else {
+                "192.168."
+            }
+        )
+    }
+    var usbHostInput by remember { mutableStateOf("127.0.0.1") }
     var portInput by remember { mutableStateOf(viewModel.networkClient.port.toString()) }
     var codeInput by remember { mutableStateOf(viewModel.networkClient.pairingCode) }
 
-    val state = viewModel.connectionState
-    val isConnected = state.isConnected
+    val currentHost = if (selectedTab == 0) wifiHostInput else usbHostInput
 
     AlertDialog(
         onDismissRequest = { viewModel.closeConnectDialog() },
@@ -57,7 +77,7 @@ fun ConnectionDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 // Status message
                 Text(
@@ -73,16 +93,88 @@ fun ConnectionDialog(
                 )
 
                 if (!isConnected) {
-                    OutlinedTextField(
-                        value = hostInput,
-                        onValueChange = { hostInput = it },
-                        label = { Text("Host PC IP Address") },
-                        placeholder = { Text("e.g. 192.168.1.100") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-                        colors = textFieldColors(),
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    TabRow(
+                        selectedTabIndex = selectedTab,
+                        containerColor = Color(0xFF11, 0x18, 0x27),
+                        contentColor = Color(0xFF38, 0xBD, 0xF8)
+                    ) {
+                        Tab(
+                            selected = selectedTab == 0,
+                            onClick = { selectedTab = 0 },
+                            text = { Text("Wi-Fi / Hotspot", fontSize = 12.sp) }
+                        )
+                        Tab(
+                            selected = selectedTab == 1,
+                            onClick = { selectedTab = 1 },
+                            text = { Text("USB (ADB)", fontSize = 12.sp) }
+                        )
+                    }
+
+                    if (selectedTab == 0) {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF11, 0x18, 0x27)),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Text(
+                                    "• Wi-Fi: Connect PC & phone to same Wi-Fi. Enter PC IP.",
+                                    color = Color(0xFF9CA3AF),
+                                    fontSize = 11.sp
+                                )
+                                Text(
+                                    "• Hotspot: Connect PC to phone hotspot. Enter PC's 192.168.43.x IP.",
+                                    color = Color(0xFF9CA3AF),
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+
+                        OutlinedTextField(
+                            value = wifiHostInput,
+                            onValueChange = { wifiHostInput = it },
+                            label = { Text("Desktop PC IP Address") },
+                            placeholder = { Text("e.g. 192.168.1.100") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                            colors = textFieldColors(),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF11, 0x18, 0x27)),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Text(
+                                    "1. Connect phone to PC via USB cable.",
+                                    color = Color(0xFF9CA3AF),
+                                    fontSize = 11.sp
+                                )
+                                Text(
+                                    "2. Enable USB debugging in Developer Options.",
+                                    color = Color(0xFF9CA3AF),
+                                    fontSize = 11.sp
+                                )
+                                Text(
+                                    "3. On PC DoodleLink: Click 'Enable ADB Reverse' in USB tab.",
+                                    color = Color(0xFF9CA3AF),
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+
+                        OutlinedTextField(
+                            value = usbHostInput,
+                            onValueChange = { usbHostInput = it },
+                            label = { Text("USB Localhost Address") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                            colors = textFieldColors(),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
 
                     OutlinedTextField(
                         value = portInput,
@@ -123,9 +215,9 @@ fun ConnectionDialog(
                 Button(
                     onClick = {
                         val port = portInput.toIntOrNull() ?: 8765
-                        viewModel.connectToHost(hostInput, port, codeInput)
+                        viewModel.connectToHost(currentHost, port, codeInput)
                     },
-                    enabled = hostInput.isNotBlank() && codeInput.length == 6,
+                    enabled = currentHost.isNotBlank() && codeInput.length == 6,
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
                 ) {
                     Text("Connect")

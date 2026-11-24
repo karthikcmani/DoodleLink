@@ -1,8 +1,8 @@
 # DoodleLink — Project Status
 
 **Last updated:** 2026-11-25  
-**Current phase:** Phase 3 — End-to-end Wi-Fi synchronization (MVP)  
-**Overall status:** Phase 3 completed and verified; ready for Phase 4.
+**Current phase:** Phase 4 — Hotspot and USB Connectivity  
+**Overall status:** Phase 4 completed and verified; ready for Phase 5.
 
 ## Verified facts
 - **GitHub repository:** `https://github.com/karthikcmani/DoodleLink.git`
@@ -15,27 +15,36 @@
 - **Desktop Host Architecture (`desktop/src/doodlelink`):**
   - `network/protocol.py`: Protocol v1 payload builders and message validator
   - `network/pairing.py`: `PairingManager` with 6-digit secure pairing tokens, constant-time verification, and local network interface discovery
+  - `network/adb_manager.py`: `AdbManager` handling ADB detection, device authorization checks (`device`, `unauthorized`, `offline`), `setup_reverse_port(8765)` (`adb -s <serial> reverse tcp:8765 tcp:8765`), `remove_reverse_port`, and active reverse mapping verification
+  - `network/network_diagnostics.py`: `NetworkDiagnostics` classifying IPv4 interfaces (`WIFI_LAN`, `PHONE_HOTSPOT` `192.168.43.x`, `USB_TETHERING` `192.168.42.x`, `VIRTUAL` `172.26.x.x / 192.168.56.x`, `LOOPBACK`), TCP port reachability testing, and recommendation generation
   - `network/server.py`: `WhiteboardServer` running `websockets` asyncio event loop on a daemon thread, emitting Qt signals to main thread, broadcasting drawing events, and rejecting unauthenticated clients
-  - `ui/pairing_dialog.py`: `PairingDialog` displaying Host IP, Port, 6-digit code, connected device name, and regeneration button
+  - `ui/pairing_dialog.py`: Tabbed `PairingDialog` with dedicated tabs for:
+    1. **📶 Wi-Fi / Hotspot:** Network interface selector dropdown, Port, 6-digit pairing code, and instructions for Wi-Fi and Portable Hotspot modes
+    2. **🔌 USB Cable (ADB):** ADB version and connected device discovery, "Enable USB Port Forwarding" button, "Remove Mapping" button, and step-by-step connection guide
+    3. **🔍 Diagnostics:** Comprehensive diagnostic report on host port listening status, primary recommended IP, categorized network interfaces, ADB status, and tailored troubleshooting advice
   - `ui/main_window.py`: Integrated WebSocket server, incoming event routing to `CanvasState`, bidirectional local mouse stroke broadcast to connected clients without echo loops
   - `ui/toolbar.py`: Interactive connection status badge and quick connect button
 - **Android Client Architecture (`android/app/src/main/java/com/doodlelink/app`):**
   - `network/ConnectionState.kt`: Connection state machine (`DISCONNECTED`, `CONNECTING`, `CONNECTED`, `RECONNECTING`, `ERROR`)
   - `network/ProtocolMessages.kt`: Serializable Kotlin data classes for all Protocol v1 events
-  - `network/WebSocketClient.kt`: OkHttp WebSocket client with automatic pairing handshake, heartbeat ping/pong (10s), exponential backoff auto-reconnect, and outbound stroke/action streaming
-  - `ui/ConnectionDialog.kt`: Material3 dialog for entering PC host IP, port, and 6-digit pairing code
+  - `network/WebSocketClient.kt`: OkHttp WebSocket client with automatic pairing handshake, heartbeat ping/pong (10s), exponential backoff auto-reconnect, outbound stroke/action streaming, and tailored diagnostics for connection refused (distinguishing USB ADB vs Wi-Fi), timeouts, and route failures
+  - `ui/ConnectionDialog.kt`: Material3 tabbed dialog for switching between "Wi-Fi / Hotspot" and "USB (ADB)", auto-populating `127.0.0.1:8765` in USB mode with clear user instructions
   - `ui/DrawingControls.kt`: Interactive toolbar connection status pill
   - `viewmodel/DrawingViewModel.kt`: Coordinated local canvas state and network synchronization
-  - `AndroidManifest.xml`: Configured `INTERNET`, `ACCESS_NETWORK_STATE`, and `android:usesCleartextTraffic="true"` for local LAN/Wi-Fi WebSocket access
+  - `AndroidManifest.xml`: Configured `INTERNET`, `ACCESS_NETWORK_STATE`, and `android:usesCleartextTraffic="true"` for local LAN/Wi-Fi/USB WebSocket access
 - **Test Results:**
-  - Desktop Tests: 33 tests in `tests/` (`test_stroke_model`, `test_coordinate_mapping`, `test_canvas_state`, `test_ui_canvas`, `test_network_protocol`, `test_pairing_manager`, `test_network_integration`) — all 33 passed in 1.98s via `pytest`.
-  - Android Tests: 16 unit and protocol tests in `android/app/src/test/java/com/doodlelink/app/` — all 16 passed in 31s via `gradlew testDebugUnitTest`.
-  - Static Analysis: `ruff check desktop tests` clean (0 errors), Android lint/compiler checks clean.
+  - Desktop Tests: 52 tests in `tests/` (`test_stroke_model`, `test_coordinate_mapping`, `test_canvas_state`, `test_ui_canvas`, `test_network_protocol`, `test_pairing_manager`, `test_network_integration`, `test_adb_manager`, `test_network_diagnostics`, `test_pairing_dialog_usb`) — all 52 passed in 8.10s via `pytest`.
+  - Android Tests: 20 unit and protocol tests in `android/app/src/test/java/com/doodlelink/app/` (`CanvasStateTest`, `CoordinateMapperTest`, `StrokeModelTest`, `WebSocketProtocolTest`, `WebSocketClientDiagnosticsTest`) — all 20 passed via `gradlew testDebugUnitTest`.
+  - Static Analysis: `ruff check desktop tests` clean (0 errors), Android Kotlin compiler checks clean.
 - **Build Verification:**
-  - Desktop: Successfully launches headless, initializes WebSocket host, binds port, processes paint events, and cleanly stops.
-  - Android: `gradlew assembleDebug` successfully built `app-debug.apk` (17.1 MB) at `android/app/build/outputs/apk/debug/app-debug.apk`.
-- **Hardware Verification Limitation:**
-  - Checked `adb devices`: no physical device is currently attached via USB. Automated integration tests simulated end-to-end WebSocket connection, unauthorized rejection, pairing handshake, bidirectional stroke streams, undo/redo/clear, and ping-pong heartbeats against the live server. Real hardware drawing will be exercised when Nothing Phone (3a) is connected.
+  - Desktop: Successfully launches, initializes WebSocket host, binds port, processes paint events, runs ADB reverse and diagnostics, and cleanly stops.
+  - Android: `gradlew assembleDebug` successfully built `app-debug.apk` at `android/app/build/outputs/apk/debug/app-debug.apk`.
+- **Hardware Verification (Nothing Phone 3a):**
+  - Device identified via ADB: Brand `Nothing`, Model `A001T`, Serial `0025035AB000551` in authorized `device` state.
+  - Application installed directly via `adb install -r app-debug.apk` (`Success`).
+  - `adb reverse tcp:8765 tcp:8765` verified (`UsbFfs tcp:8765 tcp:8765`) and clean removal verified.
+  - Application launched into foreground (`com.doodlelink.app.debug/com.doodlelink.app.MainActivity`).
+  - Zero crashes or errors in logcat.
 
 ## Phase 0 milestone checklist
 - [x] Place `AGENTS.md` at repository root.
@@ -89,9 +98,19 @@
 - [x] Build debug APK and verify desktop app launch.
 - [x] Commit Phase 3 milestone with Conventional Commit (`1e7d1cd`) and push to `origin/main`.
 
+## Phase 4 milestone checklist
+- [x] Implement `AdbManager` on desktop for ADB executable discovery, device state inspection, and `adb reverse tcp:8765 tcp:8765` management with cleanup.
+- [x] Implement `NetworkDiagnostics` classifying interfaces (`WIFI_LAN`, `PHONE_HOTSPOT` `192.168.43.x`, `USB_TETHERING` `192.168.42.x`, `VIRTUAL`, `LOOPBACK`), TCP port reachability checks, and actionable troubleshooting messages.
+- [x] Upgrade Desktop `PairingDialog` with a 3-tab layout: Wi-Fi/Hotspot (with interface selector), USB Cable (ADB Reverse with live device list & controls), and Diagnostics report.
+- [x] Upgrade Android `ConnectionDialog` with mode switching between Wi-Fi / Hotspot and USB (ADB), auto-populating `127.0.0.1:8765` for USB mode.
+- [x] Implement rich network error classification in `WebSocketClient.kt` distinguishing connection refused (ADB reverse vs server running), timeouts, and route failures.
+- [x] Add automated unit and integration tests for ADB device parsing, ADB reverse command construction, ADB error handling, interface classification, port reachability, and PySide6 dialog tab workflows (52 desktop tests, 20 Android tests).
+- [x] Verify hardware on physical Nothing Phone (3a) `A001T` over USB: installed debug APK, tested ADB reverse mapping and teardown, launched application into active foreground with zero errors.
+- [x] Update documentation with USB tethering investigation findings and connection workflows.
+
 ## Next milestone
-**Phase 4 — Hotspot and USB connectivity**
-- Verify operation over Android phone Wi-Fi hotspot without external internet connection.
-- Implement and document wired USB mode using ADB reverse port forwarding (`adb reverse tcp:8765 tcp:8765`).
-- Test USB tethering mode fallback.
-- Add connection troubleshooting UI and diagnostics on both applications.
+**Phase 5 — Canvas Persistence and Export**
+- Local whiteboard file persistence (custom `.doodle` / `.json` format with versioning and stroke metadata).
+- Export canvas to PNG, SVG, and high-resolution raster image.
+- Recent files management and canvas title metadata.
+- Import/load saved whiteboards onto both desktop and Android clients.

@@ -112,16 +112,38 @@ class WebSocketClient(
 
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                     stopPingTimer()
+                    val errorMsg = formatErrorMessage(t)
                     if (!userDisconnected) {
-                        scheduleReconnect(t.message ?: "Connection failed")
+                        scheduleReconnect(errorMsg)
                     } else {
-                        statusMessage = t.message ?: "Failed"
+                        statusMessage = errorMsg
                         connectionState = ConnectionState.ERROR
                     }
                 }
             })
         } catch (e: Exception) {
-            scheduleReconnect(e.message ?: "Failed to initiate connection")
+            scheduleReconnect(formatErrorMessage(e))
+        }
+    }
+
+    fun formatErrorMessage(t: Throwable): String {
+        val msg = t.message ?: t.javaClass.simpleName
+        val isUsb = host == "127.0.0.1" || host == "localhost"
+        return when {
+            t is java.net.ConnectException -> {
+                if (isUsb) {
+                    "USB connection refused: Ensure 'adb reverse' is enabled on PC"
+                } else {
+                    "Connection refused: Ensure server is running on $host:$port"
+                }
+            }
+            t is java.net.SocketTimeoutException -> {
+                "Connection timed out: Check PC IP and Wi-Fi/Hotspot network"
+            }
+            t is java.net.NoRouteToHostException -> {
+                "No route to host: Ensure phone and PC are on same network"
+            }
+            else -> msg
         }
     }
 
