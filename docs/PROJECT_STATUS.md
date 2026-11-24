@@ -76,7 +76,7 @@
 - [x] Implement `DrawingViewModel` retaining state across portrait/landscape orientation changes.
 - [x] Write and run Android unit tests (15 tests passed).
 - [x] Assemble and verify debug APK (`app-debug.apk`, 16.6 MB).
-- [ ] Commit Phase 2 milestone with Conventional Commit and push to `origin/main`.
+- [x] Commit Phase 2 milestone with Conventional Commit (`95bb80f`) and push to `origin/main`.
 
 ## Next milestone
 **Phase 3 — End-to-end Wi-Fi synchronization (MVP)**
