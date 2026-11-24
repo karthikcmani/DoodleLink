@@ -1,6 +1,8 @@
 package com.doodlelink.app
 
+import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -21,6 +23,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleIntent(intent)
 
         setContent {
             MaterialTheme(
@@ -48,6 +51,25 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent == null) return
+        val host = intent.getStringExtra("connect_host")
+        val port = intent.getIntExtra("connect_port", 8765)
+        val code = intent.getStringExtra("connect_code")
+
+        if (!host.isNullOrBlank() && !code.isNullOrBlank()) {
+            Log.i("DoodleLink", "Auto-connecting via Intent to $host:$port with code $code")
+            viewModel.connectToHost(host, port, code)
+        } else if (intent.getBooleanExtra("open_dialog", false)) {
+            viewModel.openConnectDialog()
         }
     }
 }

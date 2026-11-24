@@ -43,8 +43,11 @@
   - Device identified via ADB: Brand `Nothing`, Model `A001T`, Serial `0025035AB000551` in authorized `device` state.
   - Application installed directly via `adb install -r app-debug.apk` (`Success`).
   - `adb reverse tcp:8765 tcp:8765` verified (`UsbFfs tcp:8765 tcp:8765`) and clean removal verified.
-  - Application launched into foreground (`com.doodlelink.app.debug/com.doodlelink.app.MainActivity`).
-  - Zero crashes or errors in logcat.
+  - End-to-end bidirectional hardware verification executed via `scripts/verify_usb_hardware.py`:
+    1. **USB Reverse Tunnel Handshake:** Android app connected to `127.0.0.1:8765` over ADB reverse; desktop server validated 6-digit pairing code and completed session handshake (`Client paired successfully: Nothing Phone (3a) at 127.0.0.1:63191`).
+    2. **Android -> Desktop Drawing:** Hardware touch gesture executed on the phone screen; desktop server received and validated `stroke_start` (`4b9a7015-62ae-4785-a1bb-80650cfc980e`, tool `pen`), 40+ streaming coordinate point events (`stroke_points`), and completion (`stroke_end`).
+    3. **Desktop -> Android Drawing:** Desktop broadcast stroke `desk-usb-test-999`; physical phone logcat verified reception and local rendering (`Remote stroke start: desk-usb-test-999`, `Remote stroke end: desk-usb-test-999`).
+  - Zero crashes or unhandled exceptions in device logcat.
 
 ## Phase 0 milestone checklist
 - [x] Place `AGENTS.md` at repository root.

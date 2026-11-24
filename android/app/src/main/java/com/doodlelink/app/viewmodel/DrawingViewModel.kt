@@ -1,5 +1,6 @@
 package com.doodlelink.app.viewmodel
 
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -58,12 +59,14 @@ class DrawingViewModel : ViewModel() {
 
     private fun setupNetworkObservers() {
         networkClient.onStateChanged = { state, msg ->
+            Log.i("DoodleLink", "ConnectionState changed: $state - $msg")
             connectionState = state
             connectionStatusMessage = msg
             stateVersion++
         }
 
         networkClient.onRemoteStrokeStart = { stroke ->
+            Log.i("DoodleLink", "Remote stroke start: ${stroke.id}")
             isHandlingRemote = true
             try {
                 val localStroke = canvasState.startStroke(
@@ -80,7 +83,7 @@ class DrawingViewModel : ViewModel() {
             }
         }
 
-        networkClient.onRemoteStrokePoints = { _, pts ->
+        networkClient.onRemoteStrokePoints = { strokeId, pts ->
             isHandlingRemote = true
             try {
                 for (p in pts) {
@@ -91,7 +94,8 @@ class DrawingViewModel : ViewModel() {
             }
         }
 
-        networkClient.onRemoteStrokeEnd = {
+        networkClient.onRemoteStrokeEnd = { strokeId ->
+            Log.i("DoodleLink", "Remote stroke end: $strokeId")
             isHandlingRemote = true
             try {
                 canvasState.finishStroke()
@@ -191,6 +195,7 @@ class DrawingViewModel : ViewModel() {
             pressure = pressure
         )
 
+        Log.i("DoodleLink", "onLocalStrokeStart: id=${stroke.id}, isConnected=${networkClient.connectionState.isConnected}")
         if (!isHandlingRemote && networkClient.connectionState.isConnected) {
             networkClient.sendStrokeStart(stroke, ++sequence)
         }
@@ -208,6 +213,7 @@ class DrawingViewModel : ViewModel() {
     fun onLocalStrokeFinish() {
         val activeId = canvasState.activeStroke?.id
         val stroke = canvasState.finishStroke()
+        Log.i("DoodleLink", "onLocalStrokeFinish: id=$activeId, isConnected=${networkClient.connectionState.isConnected}")
         if (!isHandlingRemote && stroke != null && activeId != null && networkClient.connectionState.isConnected) {
             networkClient.sendStrokeEnd(activeId, ++sequence)
         }
