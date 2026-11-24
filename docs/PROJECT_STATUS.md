@@ -87,7 +87,7 @@
 - [x] Stream real-time drawing events (`stroke_start`, `stroke_points`, `stroke_end`, `stroke_cancel`) and actions (`undo`, `redo`, `clear`) bidirectionally.
 - [x] Write desktop and Android network unit and integration tests (33 desktop passed, 16 Android passed).
 - [x] Build debug APK and verify desktop app launch.
-- [ ] Commit Phase 3 milestone with Conventional Commit and push to `origin/main`.
+- [x] Commit Phase 3 milestone with Conventional Commit (`1e7d1cd`) and push to `origin/main`.
 
 ## Next milestone
 **Phase 4 — Hotspot and USB connectivity**
