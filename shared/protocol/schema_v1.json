@@ -15,6 +15,7 @@
       "enum": [
         "hello",
         "pair",
+        "pair_success",
         "stroke_start",
         "stroke_points",
         "stroke_end",
@@ -30,6 +31,18 @@
     "session_id": {
       "type": "string",
       "description": "Unique session identifier"
+    },
+    "code": {
+      "type": "string",
+      "description": "Short-lived pairing authentication code or error code"
+    },
+    "client_name": {
+      "type": "string",
+      "description": "Friendly name of client device"
+    },
+    "message": {
+      "type": "string",
+      "description": "Human-readable status or error message"
     },
     "stroke_id": {
       "type": "string",
@@ -55,6 +68,10 @@
       "minimum": 0.0001,
       "maximum": 0.5,
       "description": "Normalized stroke width relative to logical canvas width"
+    },
+    "timestamp": {
+      "type": "number",
+      "description": "Heartbeat or event timestamp in milliseconds"
     },
     "points": {
       "type": "array",

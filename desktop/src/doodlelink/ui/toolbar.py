@@ -27,6 +27,7 @@ class WhiteboardToolbar(QFrame):
     redo_requested = Signal()
     clear_requested = Signal()
     fullscreen_requested = Signal()
+    pair_requested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -136,26 +137,22 @@ class WhiteboardToolbar(QFrame):
 
         main_layout.addStretch()
 
-        # 5. Fullscreen Toggle
+        # 5. Connect Phone Button
+        self.pair_btn = QPushButton("📱 Connect Phone")
+        self.pair_btn.setToolTip("Show host IP and pairing code to connect Android device")
+        self.pair_btn.clicked.connect(self.pair_requested.emit)
+        main_layout.addWidget(self.pair_btn)
+
+        # 6. Fullscreen Toggle
         self.fullscreen_btn = QPushButton("⛶ Fullscreen")
         self.fullscreen_btn.setToolTip("Toggle distraction-free presentation mode (F11)")
         self.fullscreen_btn.clicked.connect(self.fullscreen_requested.emit)
         main_layout.addWidget(self.fullscreen_btn)
 
-        # 6. Standalone Status Badge
-        self.status_badge = QLabel("● Standalone")
-        self.status_badge.setStyleSheet("""
-            QLabel {
-                color: #10B981;
-                background-color: rgba(16, 185, 129, 0.12);
-                border: 1px solid rgba(16, 185, 129, 0.35);
-                border-radius: 10px;
-                padding: 4px 10px;
-                font-size: 11px;
-                font-weight: 600;
-            }
-        """)
-        self.status_badge.setToolTip("Running in local standalone whiteboard mode")
+        # 7. Connection Status Badge (clickable)
+        self.status_badge = QPushButton("● Wi-Fi: Ready")
+        self.status_badge.setToolTip("Click to view pairing code and connection details")
+        self.status_badge.clicked.connect(self.pair_requested.emit)
         main_layout.addWidget(self.status_badge)
 
         self._apply_toolbar_styling()
@@ -194,6 +191,42 @@ class WhiteboardToolbar(QFrame):
         """Update enabled state of Undo and Redo buttons."""
         self.undo_btn.setEnabled(can_undo)
         self.redo_btn.setEnabled(can_redo)
+
+    def update_connection_status(self, is_connected: bool, client_name: str = "") -> None:
+        """Update the connection status badge."""
+        if is_connected:
+            name = client_name or "Android Phone"
+            self.status_badge.setText(f"● Connected: {name}")
+            self.status_badge.setStyleSheet("""
+                QPushButton {
+                    color: #10B981;
+                    background-color: rgba(16, 185, 129, 0.15);
+                    border: 1px solid rgba(16, 185, 129, 0.4);
+                    border-radius: 12px;
+                    padding: 4px 12px;
+                    font-size: 11px;
+                    font-weight: 600;
+                }
+                QPushButton:hover {
+                    background-color: rgba(16, 185, 129, 0.25);
+                }
+            """)
+        else:
+            self.status_badge.setText("● Wi-Fi: Ready")
+            self.status_badge.setStyleSheet("""
+                QPushButton {
+                    color: #38BDF8;
+                    background-color: rgba(56, 189, 248, 0.12);
+                    border: 1px solid rgba(56, 189, 248, 0.35);
+                    border-radius: 12px;
+                    padding: 4px 12px;
+                    font-size: 11px;
+                    font-weight: 600;
+                }
+                QPushButton:hover {
+                    background-color: rgba(56, 189, 248, 0.22);
+                }
+            """)
 
     def select_tool(self, tool: ToolType) -> None:
         """Select tool visually in toolbar."""

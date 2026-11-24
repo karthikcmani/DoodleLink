@@ -41,9 +41,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.doodlelink.app.model.ToolType
+import com.doodlelink.app.network.ConnectionState
 import com.doodlelink.app.viewmodel.DrawingViewModel
 
 private val PaletteColors = listOf(
@@ -67,6 +69,8 @@ fun DrawingControls(
     modifier: Modifier = Modifier
 ) {
     Box(modifier = modifier) {
+        ConnectionDialog(viewModel = viewModel)
+
         // Floating Restore Button when in Fullscreen Mode
         if (viewModel.isFullScreen) {
             IconButton(
@@ -111,8 +115,11 @@ fun DrawingControls(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Tool Selector
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        // Tool Selector & Connection Button
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             ToolChip(
                                 label = "Pen",
                                 icon = Icons.Default.Edit,
@@ -125,6 +132,35 @@ fun DrawingControls(
                                 selected = viewModel.currentTool == ToolType.ERASER,
                                 onClick = { viewModel.selectTool(ToolType.ERASER) }
                             )
+
+                            // Connection Status Pill
+                            val connState = viewModel.connectionState
+                            val connText = when (connState) {
+                                ConnectionState.CONNECTED -> "● PC"
+                                ConnectionState.CONNECTING, ConnectionState.RECONNECTING -> "● ..."
+                                ConnectionState.ERROR -> "● Error"
+                                ConnectionState.DISCONNECTED -> "● Connect"
+                            }
+                            val connColor = when (connState) {
+                                ConnectionState.CONNECTED -> Color(0xFF10B981)
+                                ConnectionState.CONNECTING, ConnectionState.RECONNECTING -> Color(0xFF38BDF8)
+                                ConnectionState.ERROR -> Color(0xFFEF4444)
+                                ConnectionState.DISCONNECTED -> Color(0xFF9CA3AF)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0xFF1F2937))
+                                    .clickable { viewModel.openConnectDialog() }
+                                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = connText,
+                                    color = connColor,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
                         }
 
                         // Actions

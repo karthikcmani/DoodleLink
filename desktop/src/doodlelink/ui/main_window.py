@@ -14,7 +14,19 @@ from PySide6.QtWidgets import (
 from doodlelink.models.canvas_state import CanvasState
 from doodlelink.models.coordinate import CoordinateMapper, LogicalCanvas
 from doodlelink.models.stroke import ToolType
+from doodlelink.network.pairing import PairingManager
+from doodlelink.network.protocol import (
+    build_clear_canvas,
+    build_redo,
+    build_stroke_cancel,
+    build_stroke_end,
+    build_stroke_points,
+    build_stroke_start,
+    build_undo,
+)
+from doodlelink.network.server import WhiteboardServer
 from doodlelink.ui.canvas_widget import CanvasWidget
+from doodlelink.ui.pairing_dialog import PairingDialog
 from doodlelink.ui.toolbar import WhiteboardToolbar
 
 
@@ -37,6 +49,13 @@ class MainWindow(QMainWindow):
         self.coord_mapper = coord_mapper or CoordinateMapper(
             logical_canvas=LogicalCanvas(aspect_ratio=16.0 / 9.0)
         )
+
+        # Network host server & pairing
+        self.pairing_manager = PairingManager()
+        self.server = WhiteboardServer(pairing_manager=self.pairing_manager, parent=self)
+        self._sequence: int = 0
+        self._handling_remote: bool = False
+        self.pairing_dialog: PairingDialog | None = None
 
         # Main central layout
         central_container = QWidget(self)
@@ -62,6 +81,9 @@ class MainWindow(QMainWindow):
 
         # Connect Toolbar and Canvas Signals
         self._connect_signals()
+
+        # Start WebSocket Host Server
+        self.server.start(host="0.0.0.0", port=8765)
 
         # Setup Keyboard Shortcuts
         self._setup_shortcuts()
@@ -113,10 +135,28 @@ class MainWindow(QMainWindow):
         self.toolbar.redo_requested.connect(self.redo)
         self.toolbar.clear_requested.connect(self.clear_canvas)
         self.toolbar.fullscreen_requested.connect(self.toggle_fullscreen)
+        self.toolbar.pair_requested.connect(self._show_pairing_dialog)
 
         # Canvas -> Status updates
         self.canvas.cursor_moved.connect(self._on_cursor_moved)
         self.canvas.drawing_state_changed.connect(self._update_status_info)
+
+        # Server Signals
+        self.server.client_paired.connect(self._on_client_paired)
+        self.server.client_disconnected.connect(self._on_client_disconnected)
+        self.server.remote_stroke_started.connect(self._handle_remote_stroke_start)
+        self.server.remote_stroke_points.connect(self._handle_remote_stroke_points)
+        self.server.remote_stroke_ended.connect(self._handle_remote_stroke_end)
+        self.server.remote_stroke_cancelled.connect(self._handle_remote_stroke_cancel)
+        self.server.remote_undo.connect(self._handle_remote_undo)
+        self.server.remote_redo.connect(self._handle_remote_redo)
+        self.server.remote_clear.connect(self._handle_remote_clear)
+
+        # Observe local canvas state to broadcast to phone
+        self.canvas_state._on_stroke_started.append(self._on_local_stroke_started)
+        self.canvas_state._on_point_added.append(self._on_local_point_added)
+        self.canvas_state._on_stroke_committed.append(self._on_local_stroke_committed)
+        self.canvas_state._on_stroke_cancelled.append(self._on_local_stroke_cancelled)
 
     def _setup_shortcuts(self) -> None:
         # Undo: Ctrl+Z
@@ -194,19 +234,159 @@ class MainWindow(QMainWindow):
             self.canvas.set_eraser_thickness(thickness_px)
         self._update_status_info()
 
+    def _next_sequence(self) -> int:
+        self._sequence += 1
+        return self._sequence
+
+    def _show_pairing_dialog(self) -> None:
+        if self.pairing_dialog is None:
+            self.pairing_dialog = PairingDialog(
+                pairing_manager=self.pairing_manager,
+                port=self.server.port,
+                parent=self,
+            )
+        self.pairing_dialog.show()
+        self.pairing_dialog.raise_()
+        self.pairing_dialog.activateWindow()
+
+    def _on_client_paired(self, client_addr: str, client_name: str) -> None:
+        self.toolbar.update_connection_status(True, client_name)
+        if self.pairing_dialog and self.pairing_dialog.isVisible():
+            self.pairing_dialog.update_connected_client(client_name, client_addr)
+
+    def _on_client_disconnected(self, client_addr: str) -> None:
+        if self.server.paired_client_count == 0:
+            self.toolbar.update_connection_status(False)
+            if self.pairing_dialog and self.pairing_dialog.isVisible():
+                self.pairing_dialog.update_disconnected()
+
+    # --- Remote Drawing Event Handlers ---
+
+    def _handle_remote_stroke_start(self, data: dict) -> None:
+        self._handling_remote = True
+        try:
+            pts = data.get("points", [])
+            start_x = pts[0]["x"] if pts else None
+            start_y = pts[0]["y"] if pts else None
+            pressure = pts[0].get("pressure", 1.0) if pts else 1.0
+
+            stroke = self.canvas_state.start_stroke(
+                tool=ToolType.from_str(data.get("tool", "pen")),
+                color=data.get("color", "#000000"),
+                width=float(data.get("width", 0.004)),
+                start_x=start_x,
+                start_y=start_y,
+                pressure=pressure,
+            )
+            stroke.id = data.get("stroke_id", stroke.id)
+            self.canvas.update()
+        finally:
+            self._handling_remote = False
+
+    def _handle_remote_stroke_points(self, data: dict) -> None:
+        self._handling_remote = True
+        try:
+            pts = data.get("points", [])
+            for p in pts:
+                self.canvas_state.append_point(
+                    x=float(p["x"]),
+                    y=float(p["y"]),
+                    timestamp=float(p.get("timestamp", 0)),
+                    pressure=float(p.get("pressure", 1.0)),
+                )
+            self.canvas.update()
+        finally:
+            self._handling_remote = False
+
+    def _handle_remote_stroke_end(self, stroke_id: str) -> None:
+        self._handling_remote = True
+        try:
+            self.canvas_state.finish_stroke()
+            self.canvas.update()
+        finally:
+            self._handling_remote = False
+
+    def _handle_remote_stroke_cancel(self, stroke_id: str) -> None:
+        self._handling_remote = True
+        try:
+            self.canvas_state.cancel_stroke()
+            self.canvas.update()
+        finally:
+            self._handling_remote = False
+
+    def _handle_remote_undo(self) -> None:
+        self._handling_remote = True
+        try:
+            self.canvas_state.undo()
+            self.canvas.update()
+        finally:
+            self._handling_remote = False
+
+    def _handle_remote_redo(self) -> None:
+        self._handling_remote = True
+        try:
+            self.canvas_state.redo()
+            self.canvas.update()
+        finally:
+            self._handling_remote = False
+
+    def _handle_remote_clear(self) -> None:
+        self._handling_remote = True
+        try:
+            self.canvas_state.clear()
+            self.canvas.update()
+        finally:
+            self._handling_remote = False
+
+    # --- Local Drawing Event Broadcasts ---
+
+    def _on_local_stroke_started(self, stroke) -> None:
+        if self._handling_remote or not self.server.paired_client_count:
+            return
+        msg = build_stroke_start(stroke, self._next_sequence(), self.pairing_manager.session_id)
+        self.server.broadcast_event(msg)
+
+    def _on_local_point_added(self, stroke, pt) -> None:
+        if self._handling_remote or not self.server.paired_client_count:
+            return
+        msg = build_stroke_points(stroke.id, [pt], self._next_sequence(), self.pairing_manager.session_id)
+        self.server.broadcast_event(msg)
+
+    def _on_local_stroke_committed(self, stroke) -> None:
+        if self._handling_remote or not self.server.paired_client_count:
+            return
+        msg = build_stroke_end(stroke.id, self._next_sequence(), self.pairing_manager.session_id)
+        self.server.broadcast_event(msg)
+
+    def _on_local_stroke_cancelled(self) -> None:
+        if self._handling_remote or not self.server.paired_client_count:
+            return
+        msg = build_stroke_cancel("", self._next_sequence(), self.pairing_manager.session_id)
+        self.server.broadcast_event(msg)
+
     def undo(self) -> None:
         """Revert the most recent action."""
-        self.canvas_state.undo()
+        if self.canvas_state.undo() and not self._handling_remote and self.server.paired_client_count:
+            msg = build_undo(self._next_sequence(), self.pairing_manager.session_id)
+            self.server.broadcast_event(msg)
 
     def redo(self) -> None:
         """Restore the most recently reverted action."""
-        self.canvas_state.redo()
+        if self.canvas_state.redo() and not self._handling_remote and self.server.paired_client_count:
+            msg = build_redo(self._next_sequence(), self.pairing_manager.session_id)
+            self.server.broadcast_event(msg)
 
     def clear_canvas(self) -> None:
         """Clear all strokes from canvas with complete undo support."""
         if self.canvas_state.stroke_count == 0:
             return
-        self.canvas_state.clear()
+        if self.canvas_state.clear() and not self._handling_remote and self.server.paired_client_count:
+            msg = build_clear_canvas(self._next_sequence(), self.pairing_manager.session_id)
+            self.server.broadcast_event(msg)
+
+    def closeEvent(self, event) -> None:
+        self.server.stop()
+        super().closeEvent(event)
 
     def toggle_fullscreen(self) -> None:
         """Toggle distraction-free presentation mode."""

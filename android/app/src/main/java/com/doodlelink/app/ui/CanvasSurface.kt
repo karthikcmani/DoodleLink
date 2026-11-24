@@ -45,17 +45,8 @@ fun CanvasSurface(
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val (startX, startY) = coordMapper.screenToNormalized(down.position.x, down.position.y)
-                    val normWidth = coordMapper.pixelToNormalizedWidth(viewModel.activeThicknessPx)
-                    val color = if (viewModel.currentTool == ToolType.PEN) viewModel.currentColor else "#FFFFFF"
 
-                    canvasState.startStroke(
-                        tool = viewModel.currentTool,
-                        color = color,
-                        width = normWidth,
-                        startX = startX,
-                        startY = startY,
-                        pressure = down.pressure
-                    )
+                    viewModel.onLocalStrokeStart(startX, startY, down.pressure)
                     down.consume()
 
                     val pointerId = down.id
@@ -65,10 +56,10 @@ fun CanvasSurface(
 
                         if (change.pressed) {
                             val (nx, ny) = coordMapper.screenToNormalized(change.position.x, change.position.y)
-                            canvasState.appendPoint(nx, ny, pressure = change.pressure)
+                            viewModel.onLocalPointAppend(nx, ny, change.pressure)
                             change.consume()
                         } else {
-                            canvasState.finishStroke()
+                            viewModel.onLocalStrokeFinish()
                             change.consume()
                             break
                         }
