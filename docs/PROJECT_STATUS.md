@@ -58,7 +58,7 @@
 - [x] Write comprehensive unit tests for models, coordinates, canvas state, and UI.
 - [x] Verify test execution (`pytest`: 23 passed) and static checks (`ruff`: clean).
 - [x] Verify application launch and rendering.
-- [ ] Commit Phase 1 milestone with Conventional Commit and push to `origin/main`.
+- [x] Commit Phase 1 milestone with Conventional Commit (`c21c38d`) and push to `origin/main`.
 
 ## Next milestone
 **Phase 2 — Android drawing foundation**
