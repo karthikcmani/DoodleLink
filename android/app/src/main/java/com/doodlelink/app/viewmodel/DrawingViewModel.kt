@@ -46,6 +46,12 @@ class DrawingViewModel : ViewModel() {
     var stateVersion by mutableIntStateOf(0)
         private set
 
+    var currentPageNumber by mutableIntStateOf(1)
+        private set
+
+    var totalPages by mutableIntStateOf(1)
+        private set
+
     private var isHandlingRemote = false
     private var sequence = 0
 
@@ -137,6 +143,18 @@ class DrawingViewModel : ViewModel() {
                 canvasState.clear()
             } finally {
                 isHandlingRemote = false
+            }
+        }
+
+        networkClient.onPageInfoReceived = { pNum, total, strokes ->
+            currentPageNumber = pNum
+            totalPages = total
+            isHandlingRemote = true
+            try {
+                canvasState.resetStrokes(strokes)
+            } finally {
+                isHandlingRemote = false
+                stateVersion++
             }
         }
     }
@@ -242,6 +260,24 @@ class DrawingViewModel : ViewModel() {
     fun clear() {
         if (canvasState.clear() && !isHandlingRemote && networkClient.connectionState.isConnected) {
             networkClient.sendClear(++sequence)
+        }
+    }
+
+    fun nextPage() {
+        if (networkClient.connectionState.isConnected) {
+            networkClient.sendPageSwitch("next", sequence = ++sequence)
+        }
+    }
+
+    fun prevPage() {
+        if (networkClient.connectionState.isConnected) {
+            networkClient.sendPageSwitch("prev", sequence = ++sequence)
+        }
+    }
+
+    fun addPage() {
+        if (networkClient.connectionState.isConnected) {
+            networkClient.sendPageSwitch("add", sequence = ++sequence)
         }
     }
 }

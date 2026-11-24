@@ -56,6 +56,16 @@ class CanvasWidget(QWidget):
         self.canvas_state.add_change_listener(self._on_state_changed)
         self._update_cursor()
 
+    def set_canvas_state(self, new_state: CanvasState) -> None:
+        """Replace the active canvas state (e.g. when switching pages)."""
+        if self.canvas_state == new_state:
+            return
+        self.canvas_state.remove_change_listener(self._on_state_changed)
+        self.canvas_state = new_state
+        self.canvas_state.add_change_listener(self._on_state_changed)
+        self.update()
+        self.drawing_state_changed.emit()
+
     @property
     def active_thickness_px(self) -> float:
         """Return the pixel thickness for the currently active tool."""

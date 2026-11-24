@@ -23,10 +23,42 @@
         "undo",
         "redo",
         "clear_canvas",
+        "page_info",
+        "page_switch",
         "ping",
         "pong",
         "error"
       ]
+    },
+    "board_id": {
+      "type": "string",
+      "description": "Unique whiteboard board identifier"
+    },
+    "page_id": {
+      "type": "string",
+      "description": "Unique whiteboard page identifier"
+    },
+    "page_number": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "1-based page index within current board"
+    },
+    "total_pages": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Total number of pages in current board"
+    },
+    "direction": {
+      "type": "string",
+      "enum": ["next", "prev", "goto", "add"],
+      "description": "Page navigation direction"
+    },
+    "strokes": {
+      "type": "array",
+      "description": "List of strokes present on a page snapshot",
+      "items": {
+        "type": "object"
+      }
     },
     "session_id": {
       "type": "string",

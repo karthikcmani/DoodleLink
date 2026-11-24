@@ -107,6 +107,24 @@ class CanvasStateTest {
     }
 
     @Test
+    fun testResetStrokes() {
+        val state = CanvasState()
+        state.startStroke(startX = 0.1f, startY = 0.1f)
+        state.finishStroke()
+        assertEquals(1, state.strokeCount)
+
+        val newStrokes = listOf(
+            com.doodlelink.app.model.Stroke(color = "#FF0000"),
+            com.doodlelink.app.model.Stroke(color = "#00FF00")
+        )
+        state.resetStrokes(newStrokes)
+        assertEquals(2, state.strokeCount)
+        assertFalse(state.canUndo)
+        assertFalse(state.canRedo)
+        assertNull(state.activeStroke)
+    }
+
+    @Test
     fun testChangeListenerCalled() {
         val state = CanvasState()
         var calls = 0

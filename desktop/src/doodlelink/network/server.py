@@ -44,6 +44,7 @@ class WhiteboardServer(QObject):
     remote_undo = Signal()
     remote_redo = Signal()
     remote_clear = Signal()
+    remote_page_switch = Signal(dict)
 
     def __init__(
         self,
@@ -214,6 +215,8 @@ class WhiteboardServer(QObject):
                     self.remote_redo.emit()
                 elif msg_type == "clear_canvas":
                     self.remote_clear.emit()
+                elif msg_type == "page_switch":
+                    self.remote_page_switch.emit(data)
 
         except websockets.exceptions.ConnectionClosed:
             pass

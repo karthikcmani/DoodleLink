@@ -113,6 +113,52 @@ class WebSocketProtocolTest {
     }
 
     @Test
+    fun testPageSwitchEventSerialization() {
+        val switchEvent = com.doodlelink.app.network.PageSwitchEvent(
+            session_id = "sess-123",
+            direction = "next",
+            sequence = 10
+        )
+        val jsonStr = DoodleJson.json.encodeToString(switchEvent)
+        assertTrue(jsonStr.contains("\"type\":\"page_switch\""))
+        assertTrue(jsonStr.contains("\"direction\":\"next\""))
+        assertTrue(jsonStr.contains("\"sequence\":10"))
+    }
+
+    @Test
+    fun testPageInfoDeserialization() {
+        val pageInfoJson = """
+            {
+                "version": 1,
+                "type": "page_info",
+                "session_id": "sess-abc",
+                "sequence": 5,
+                "board_id": "b-1",
+                "page_id": "p-2",
+                "page_number": 2,
+                "total_pages": 4,
+                "strokes": [
+                    {
+                        "stroke_id": "s-100",
+                        "tool": "pen",
+                        "color": "#FF0000",
+                        "width": 0.005,
+                        "points": [{"x": 0.1, "y": 0.2}]
+                    }
+                ]
+            }
+        """.trimIndent()
+
+        val parsed = DoodleJson.json.decodeFromString<GenericMessage>(pageInfoJson)
+        assertEquals("page_info", parsed.type)
+        assertEquals("p-2", parsed.page_id)
+        assertEquals(2, parsed.page_number)
+        assertEquals(4, parsed.total_pages)
+        assertEquals(1, parsed.strokes?.size)
+        assertEquals("s-100", parsed.strokes?.get(0)?.stroke_id)
+    }
+
+    @Test
     fun testConnectionStateBooleans() {
         assertTrue(ConnectionState.CONNECTED.isConnected)
         assertFalse(ConnectionState.DISCONNECTED.isConnected)

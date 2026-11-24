@@ -20,6 +20,8 @@ VALID_TYPES = {
     "undo",
     "redo",
     "clear_canvas",
+    "page_info",
+    "page_switch",
     "ping",
     "pong",
     "error",
@@ -70,6 +72,15 @@ def validate_message(data: Any) -> tuple[bool, str | None]:
     elif msg_type in ("stroke_end", "stroke_cancel"):
         if not data.get("stroke_id"):
             return False, f"{msg_type} requires 'stroke_id'"
+
+    elif msg_type == "page_switch":
+        direction = data.get("direction")
+        if direction not in ("next", "prev", "goto", "add"):
+            return False, f"Invalid page_switch direction: {direction}"
+
+    elif msg_type == "page_info":
+        if not data.get("page_id"):
+            return False, "page_info requires 'page_id'"
 
     return True, None
 
@@ -188,3 +199,51 @@ def build_pong() -> dict[str, Any]:
         "type": "pong",
         "timestamp": round(time.time() * 1000, 2),
     }
+
+
+def build_page_info(
+    board_id: str,
+    page_id: str,
+    page_number: int,
+    total_pages: int,
+    strokes: list[Stroke],
+    sequence: int,
+    session_id: str,
+) -> dict[str, Any]:
+    serialized_strokes = []
+    for s in strokes:
+        serialized_strokes.append({
+            "stroke_id": s.id,
+            "tool": s.tool.value,
+            "color": s.color,
+            "width": round(s.width, 6),
+            "points": [p.to_dict() for p in s.points],
+        })
+    return {
+        "version": PROTOCOL_VERSION,
+        "type": "page_info",
+        "session_id": session_id,
+        "sequence": sequence,
+        "board_id": board_id,
+        "page_id": page_id,
+        "page_number": page_number,
+        "total_pages": total_pages,
+        "strokes": serialized_strokes,
+    }
+
+
+def build_page_switch(
+    direction: str,
+    page_id: str = "",
+    sequence: int = 0,
+    session_id: str = "",
+) -> dict[str, Any]:
+    return {
+        "version": PROTOCOL_VERSION,
+        "type": "page_switch",
+        "session_id": session_id,
+        "sequence": sequence,
+        "direction": direction,
+        "page_id": page_id,
+    }
+

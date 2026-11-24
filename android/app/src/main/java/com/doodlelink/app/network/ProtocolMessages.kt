@@ -4,6 +4,15 @@ import com.doodlelink.app.model.Point
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class SerializedStroke(
+    val stroke_id: String,
+    val tool: String = "pen",
+    val color: String = "#000000",
+    val width: Float = 0.004f,
+    val points: List<Point> = emptyList()
+)
+
+@Serializable
 data class GenericMessage(
     val version: Int = 1,
     val type: String,
@@ -17,7 +26,13 @@ data class GenericMessage(
     val color: String? = null,
     val width: Float? = null,
     val timestamp: Double? = null,
-    val points: List<Point>? = null
+    val points: List<Point>? = null,
+    val board_id: String? = null,
+    val page_id: String? = null,
+    val page_number: Int? = null,
+    val total_pages: Int? = null,
+    val direction: String? = null,
+    val strokes: List<SerializedStroke>? = null
 )
 
 @Serializable
@@ -74,4 +89,27 @@ data class HeartbeatEvent(
     val version: Int = 1,
     val type: String, // "ping" or "pong"
     val timestamp: Double = System.currentTimeMillis().toDouble()
+)
+
+@Serializable
+data class PageInfoEvent(
+    val version: Int = 1,
+    val type: String = "page_info",
+    val session_id: String? = null,
+    val sequence: Int = 0,
+    val board_id: String? = null,
+    val page_id: String = "",
+    val page_number: Int = 1,
+    val total_pages: Int = 1,
+    val strokes: List<SerializedStroke> = emptyList()
+)
+
+@Serializable
+data class PageSwitchEvent(
+    val version: Int = 1,
+    val type: String = "page_switch",
+    val session_id: String? = null,
+    val sequence: Int = 0,
+    val direction: String,
+    val page_id: String = ""
 )

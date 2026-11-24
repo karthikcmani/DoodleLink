@@ -123,6 +123,15 @@ class CanvasState {
         notifyChange()
     }
 
+    fun resetStrokes(newStrokes: List<Stroke>) {
+        activeStroke = null
+        strokes.clear()
+        strokes.addAll(newStrokes)
+        undoStack.clear()
+        redoStack.clear()
+        notifyChange()
+    }
+
     // --- History Control ---
 
     fun undo(): Boolean {

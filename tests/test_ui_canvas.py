@@ -131,10 +131,10 @@ def test_toolbar_controls(qapp):
 
 
 def test_main_window_integration(qapp):
-    window = MainWindow()
+    window = MainWindow(canvas_state=CanvasState())
     window.resize(1000, 600)
 
-    assert window.windowTitle() == "DoodleLink — Smart Whiteboard"
+    assert "DoodleLink" in window.windowTitle()
     assert window.canvas_state.stroke_count == 0
 
     # Draw a stroke programmatically

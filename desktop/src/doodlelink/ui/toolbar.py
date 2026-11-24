@@ -28,6 +28,8 @@ class WhiteboardToolbar(QFrame):
     clear_requested = Signal()
     fullscreen_requested = Signal()
     pair_requested = Signal()
+    boards_requested = Signal()
+    export_requested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -137,7 +139,21 @@ class WhiteboardToolbar(QFrame):
 
         main_layout.addStretch()
 
-        # 5. Connect Phone Button
+        # 5. Boards Management Button
+        self.boards_btn = QPushButton("📁 Boards")
+        self.boards_btn.setToolTip("Manage whiteboard boards (Ctrl+B)")
+        self.boards_btn.clicked.connect(self.boards_requested.emit)
+        main_layout.addWidget(self.boards_btn)
+
+        # 6. Export Button
+        self.export_btn = QPushButton("💾 Export")
+        self.export_btn.setToolTip("Export page as PNG or board as PDF (Ctrl+E)")
+        self.export_btn.clicked.connect(self.export_requested.emit)
+        main_layout.addWidget(self.export_btn)
+
+        main_layout.addWidget(self._create_separator())
+
+        # 7. Connect Phone Button
         self.pair_btn = QPushButton("📱 Connect Phone")
         self.pair_btn.setToolTip("Show host IP and pairing code to connect Android device")
         self.pair_btn.clicked.connect(self.pair_requested.emit)

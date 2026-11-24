@@ -1,8 +1,8 @@
 # DoodleLink — Project Status
 
 **Last updated:** 2026-11-25  
-**Current phase:** Phase 4 — Hotspot and USB Connectivity  
-**Overall status:** Phase 4 completed and verified; ready for Phase 5.
+**Current phase:** Phase 5 — Persistent Boards and Multi-page Whiteboard  
+**Overall status:** Phase 5 completed and verified; ready for Phase 6 (Document Annotation & Presentation Mode).
 
 ## Verified facts
 - **GitHub repository:** `https://github.com/karthikcmani/DoodleLink.git`
@@ -118,9 +118,38 @@
   - Verified disconnect behavior (`sessionId` cleared on disconnect) and automatic ADB reverse teardown on desktop shutdown via `MainWindow.closeEvent`.
   - Built and verified both `assembleDebug` and `assembleRelease` APKs.
 
+## Phase 5 milestone checklist
+- [x] Implement versioned SQLite schema migrations (`CURRENT_SCHEMA_VERSION = 1`) with foreign keys enabled on every connection (`DatabaseManager`, `check_same_thread=False`).
+- [x] Design normalized tables: `schema_version`, `boards`, `pages` (`UNIQUE(board_id, page_number)`), `strokes` (`UNIQUE(page_id, sequence_order)`), `page_history` (persisting undo/redo stacks and action types), and `app_state` (active board/page tracking).
+- [x] Implement transactional repository (`BoardRepository`) with board CRUD, sequential page renumbering on deletion, clone-based page duplication, 1-page minimum guarantee, and cascade deletion.
+- [x] Implement full undo/redo persistence across application restarts, saving action stacks and visibility toggles without blocking drawing performance.
+- [x] Implement `MultiPageDocument` model decoupling multi-page business logic from UI, managing autosave hooks and session state recovery.
+- [x] Implement export subsystem (`doodlelink.export`):
+  - High-resolution single-page PNG export (1920x1080) with option for clean white or transparent backgrounds.
+  - Multi-page vector PDF export preserving 16:9 presentation aspect ratio using `QPdfWriter` + `QPainter`.
+- [x] Implement Desktop Board & Page UI:
+  - `BoardManagementDialog`: list recent boards, create, rename, switch, and delete with confirmation.
+  - `PagePanel`: bottom navigation strip with Prev, Page Indicator (`Page X of Y`), Next, Add Page, Duplicate, and Delete buttons.
+  - `WhiteboardToolbar`: added "📁 Boards" and "💾 Export" actions.
+  - `MainWindow`: integrated `MultiPageDocument`, keyboard shortcuts (`Ctrl+B`, `Ctrl+E`, `Ctrl+Shift+E`), and autosave on exit.
+- [x] Extend Protocol v1 with authoritative multi-page synchronization:
+  - Added `page_info` event with board UUID, page UUID, page number, total pages, and full serialized stroke snapshot.
+  - Added `page_switch` event (`direction`: `next`, `prev`, `goto`, `add`).
+  - Desktop broadcasts authoritative `page_info` snapshot upon client pairing and page changes.
+- [x] Integrate Android multi-page client:
+  - Updated `ProtocolMessages.kt` and `WebSocketClient.kt` to parse `page_info` and dispatch `sendPageSwitch`.
+  - Added `resetStrokes` to `CanvasState.kt` and wired `DrawingViewModel.kt`.
+  - Added multi-page navigation controls (`◀ Page X of Y ▶ +`) to `DrawingControls.kt` when connected to PC whiteboard.
+- [x] Automated testing & verification:
+  - Desktop: 73 unit and integration tests passed via `pytest` (including storage, multi-page document, PNG/PDF export, and end-to-end multi-page WebSocket synchronization).
+  - Android: 22 unit tests passed via `./gradlew testDebugUnitTest`.
+  - Static checks: `ruff check desktop tests scripts` clean (0 errors), Android Kotlin compile clean.
+  - Packaging: `assembleDebug` and `assembleRelease` verified; debug APK installed on physical Nothing Phone (3a).
+
 ## Next milestone
-**Phase 5 — Canvas Persistence and Export**
-- Local whiteboard file persistence (custom `.doodle` / `.json` format with versioning and stroke metadata).
-- Export canvas to PNG, SVG, and high-resolution raster image.
-- Recent files management and canvas title metadata.
-- Import/load saved whiteboards onto both desktop and Android clients.
+**Phase 6 — Document Annotation and Presentation Mode**
+- Import and render PDF documents as background pages.
+- Overlay drawing canvas on top of document pages with normalized coordinate alignment.
+- Multi-page document navigation with annotations preserved per page.
+- Laser pointer / transient pointer broadcast for presentations.
+- Export annotated documents back to vector PDF.

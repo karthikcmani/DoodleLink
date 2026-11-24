@@ -60,6 +60,14 @@ class WebSocketClient(
     var onRemoteUndo: (() -> Unit)? = null
     var onRemoteRedo: (() -> Unit)? = null
     var onRemoteClear: (() -> Unit)? = null
+    var onPageInfoReceived: ((pageNumber: Int, totalPages: Int, List<Stroke>) -> Unit)? = null
+
+    var currentPageNumber: Int = 1
+        private set
+    var totalPages: Int = 1
+        private set
+    var currentPageId: String = ""
+        private set
 
     fun connect(targetHost: String, targetPort: Int = 8765, code: String) {
         userDisconnected = false
@@ -244,6 +252,25 @@ class WebSocketClient(
                 "undo" -> onRemoteUndo?.invoke()
                 "redo" -> onRemoteRedo?.invoke()
                 "clear_canvas" -> onRemoteClear?.invoke()
+                "page_info" -> {
+                    val pNum = msg.page_number ?: 1
+                    val tPages = msg.total_pages ?: 1
+                    val pId = msg.page_id ?: ""
+                    currentPageNumber = pNum
+                    totalPages = tPages
+                    currentPageId = pId
+
+                    val strokeList = (msg.strokes ?: emptyList()).map { s ->
+                        Stroke(
+                            id = s.stroke_id,
+                            tool = ToolType.fromString(s.tool),
+                            color = s.color,
+                            width = s.width,
+                            points = s.points.toMutableList()
+                        )
+                    }
+                    onPageInfoReceived?.invoke(pNum, tPages, strokeList)
+                }
                 "ping" -> {
                     val pong = HeartbeatEvent(type = "pong")
                     webSocket?.send(DoodleJson.json.encodeToString(pong))
@@ -321,6 +348,17 @@ class WebSocketClient(
     fun sendClear(sequence: Int) {
         if (connectionState != ConnectionState.CONNECTED) return
         val event = ActionEvent(type = "clear_canvas", session_id = sessionId, sequence = sequence)
+        webSocket?.send(DoodleJson.json.encodeToString(event))
+    }
+
+    fun sendPageSwitch(direction: String, pageId: String = "", sequence: Int = 0) {
+        if (connectionState != ConnectionState.CONNECTED) return
+        val event = PageSwitchEvent(
+            session_id = sessionId,
+            sequence = sequence,
+            direction = direction,
+            page_id = pageId
+        )
         webSocket?.send(DoodleJson.json.encodeToString(event))
     }
 }

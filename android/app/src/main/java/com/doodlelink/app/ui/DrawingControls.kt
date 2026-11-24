@@ -289,6 +289,63 @@ fun DrawingControls(
                             modifier = Modifier.weight(1.0f)
                         )
                     }
+
+                    // Row 4: Multi-Page Navigation (Visible when connected to PC whiteboard)
+                    if (viewModel.connectionState.isConnected) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF1E, 0x24, 0x33))
+                                .padding(horizontal = 8.dp, vertical = 2.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = { viewModel.prevPage() },
+                                enabled = viewModel.currentPageNumber > 1,
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Text(
+                                    text = "◀",
+                                    color = if (viewModel.currentPageNumber > 1) Color.White else Color(0xFF6B7280),
+                                    fontSize = 12.sp
+                                )
+                            }
+
+                            Text(
+                                text = "Page ${viewModel.currentPageNumber} of ${viewModel.totalPages}",
+                                color = Color(0xFFE2E8F0),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(horizontal = 12.dp)
+                            )
+
+                            IconButton(
+                                onClick = { viewModel.nextPage() },
+                                enabled = viewModel.currentPageNumber < viewModel.totalPages,
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Text(
+                                    text = "▶",
+                                    color = if (viewModel.currentPageNumber < viewModel.totalPages) Color.White else Color(0xFF6B7280),
+                                    fontSize = 12.sp
+                                )
+                            }
+
+                            IconButton(
+                                onClick = { viewModel.addPage() },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Text(
+                                    text = "+",
+                                    color = Color(0xFF60A5FA),
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
