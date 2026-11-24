@@ -47,8 +47,8 @@
 - [x] Establish initial directory structure (`android/`, `desktop/`, `shared/protocol/`, `tests/`).
 - [x] Pin and install desktop requirements (`desktop/requirements.txt`), verifying PySide6 6.12.0 and pytest.
 - [x] Verify Java (JDK 21) and Android SDK (platforms 34+, build-tools 34+, adb).
-- [x] Commit foundation files with Conventional Commit message.
-- [ ] Push to `origin/main` if authorized.
+- [x] Commit foundation files with Conventional Commit message (`1dc6a25`).
+- [x] Push to `origin/main` (`ee5d7f9..1dc6a25`).
 
 ## Next milestone
 **Phase 1 — Desktop whiteboard foundation**
