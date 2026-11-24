@@ -61,13 +61,25 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIntent(intent: Intent?) {
         if (intent == null) return
-        val host = intent.getStringExtra("connect_host")
+
+        // Security: Intent-based connection automation is strictly disabled in release builds
+        // to prevent untrusted third-party apps from redirecting connections.
+        if (!BuildConfig.DEBUG) {
+            return
+        }
+
+        val host = intent.getStringExtra("connect_host")?.trim()
         val port = intent.getIntExtra("connect_port", 8765)
-        val code = intent.getStringExtra("connect_code")
+        val code = intent.getStringExtra("connect_code")?.trim()
 
         if (!host.isNullOrBlank() && !code.isNullOrBlank()) {
-            Log.i("DoodleLink", "Auto-connecting via Intent to $host:$port with code $code")
-            viewModel.connectToHost(host, port, code)
+            // Security: In debug automation, restrict to loopback to avoid arbitrary redirection
+            if (host == "127.0.0.1" || host == "localhost") {
+                Log.i("DoodleLink", "Debug auto-connecting to localhost:$port (pairing code redacted)")
+                viewModel.connectToHost(host, port, code)
+            } else {
+                Log.w("DoodleLink", "Ignored non-loopback debug auto-connect target: $host")
+            }
         } else if (intent.getBooleanExtra("open_dialog", false)) {
             viewModel.openConnectDialog()
         }

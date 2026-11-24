@@ -77,21 +77,21 @@ def main() -> int:
     server.remote_stroke_points.connect(on_stroke_points)
     server.remote_stroke_ended.connect(on_stroke_end)
 
-    print(f"\nStarting WhiteboardServer on 127.0.0.1:8765 with Pairing Code: {fixed_code}...")
+    print("\nStarting WhiteboardServer on 127.0.0.1:8765 with ephemeral pairing code (redacted)...")
     server.start(host="127.0.0.1", port=8765)
     time.sleep(0.5)
 
     # 3. Clear logcat and launch Android App with connection intent
     run_cmd(["adb", "logcat", "-c"])
     print("Launching DoodleLink on phone with intent to connect to 127.0.0.1:8765...")
-    launch_out = run_cmd([
+    run_cmd([
         "adb", "shell", "am", "start", "-S",
         "-n", "com.doodlelink.app.debug/com.doodlelink.app.MainActivity",
         "--es", "connect_host", "127.0.0.1",
         "--ei", "connect_port", "8765",
         "--es", "connect_code", fixed_code
     ])
-    print(f"Launch command output: {launch_out.strip()}")
+    print("Launch intent dispatched.")
 
     # 4. Wait for pairing handshake over USB ADB Reverse
     print("Waiting for phone pairing handshake over 127.0.0.1:8765...")

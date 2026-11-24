@@ -24,7 +24,8 @@ data class GenericMessage(
 data class PairRequest(
     val version: Int = 1,
     val type: String = "pair",
-    val code: String,
+    val code: String? = null,
+    val session_id: String? = null,
     val client_name: String = "Nothing Phone (3a)"
 )
 

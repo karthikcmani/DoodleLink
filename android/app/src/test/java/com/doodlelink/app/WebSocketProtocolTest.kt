@@ -28,6 +28,15 @@ class WebSocketProtocolTest {
     }
 
     @Test
+    fun testPairRequestWithSessionIdSerialization() {
+        val req = PairRequest(session_id = "sess-uuid-456", client_name = "Nothing Phone (3a)")
+        val jsonStr = DoodleJson.json.encodeToString(req)
+        assertTrue(jsonStr.contains("\"type\":\"pair\""))
+        assertTrue(jsonStr.contains("\"session_id\":\"sess-uuid-456\""))
+        assertTrue(jsonStr.contains("\"client_name\":\"Nothing Phone (3a)\""))
+    }
+
+    @Test
     fun testStrokeStartSerialization() {
         val start = StrokeStartEvent(
             session_id = "sess-123",

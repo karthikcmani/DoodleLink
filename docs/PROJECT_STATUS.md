@@ -33,7 +33,7 @@
   - `viewmodel/DrawingViewModel.kt`: Coordinated local canvas state and network synchronization
   - `AndroidManifest.xml`: Configured `INTERNET`, `ACCESS_NETWORK_STATE`, and `android:usesCleartextTraffic="true"` for local LAN/Wi-Fi/USB WebSocket access
 - **Test Results:**
-  - Desktop Tests: 52 tests in `tests/` (`test_stroke_model`, `test_coordinate_mapping`, `test_canvas_state`, `test_ui_canvas`, `test_network_protocol`, `test_pairing_manager`, `test_network_integration`, `test_adb_manager`, `test_network_diagnostics`, `test_pairing_dialog_usb`) — all 52 passed in 8.10s via `pytest`.
+  - Desktop Tests: 55 tests in `tests/` (`test_stroke_model`, `test_coordinate_mapping`, `test_canvas_state`, `test_ui_canvas`, `test_network_protocol`, `test_pairing_manager`, `test_network_integration`, `test_adb_manager`, `test_network_diagnostics`, `test_pairing_dialog_usb`) — all 55 passed in 8.63s via `pytest`.
   - Android Tests: 20 unit and protocol tests in `android/app/src/test/java/com/doodlelink/app/` (`CanvasStateTest`, `CoordinateMapperTest`, `StrokeModelTest`, `WebSocketProtocolTest`, `WebSocketClientDiagnosticsTest`) — all 20 passed via `gradlew testDebugUnitTest`.
   - Static Analysis: `ruff check desktop tests` clean (0 errors), Android Kotlin compiler checks clean.
 - **Build Verification:**
@@ -107,9 +107,16 @@
 - [x] Upgrade Desktop `PairingDialog` with a 3-tab layout: Wi-Fi/Hotspot (with interface selector), USB Cable (ADB Reverse with live device list & controls), and Diagnostics report.
 - [x] Upgrade Android `ConnectionDialog` with mode switching between Wi-Fi / Hotspot and USB (ADB), auto-populating `127.0.0.1:8765` for USB mode.
 - [x] Implement rich network error classification in `WebSocketClient.kt` distinguishing connection refused (ADB reverse vs server running), timeouts, and route failures.
-- [x] Add automated unit and integration tests for ADB device parsing, ADB reverse command construction, ADB error handling, interface classification, port reachability, and PySide6 dialog tab workflows (52 desktop tests, 20 Android tests).
+- [x] Add automated unit and integration tests for ADB device parsing, ADB reverse command construction, ADB error handling, interface classification, port reachability, and PySide6 dialog tab workflows (55 desktop tests, 20 Android tests).
 - [x] Verify hardware on physical Nothing Phone (3a) `A001T` over USB: installed debug APK, tested ADB reverse mapping and teardown, launched application into active foreground with zero errors.
 - [x] Update documentation with USB tethering investigation findings and connection workflows.
+- [x] **Security & Production-Readiness Audit**:
+  - Removed all logging of pairing codes, credentials, and secrets from Android logcat and desktop logs.
+  - Hardened `MainActivity.kt`: Intent automation gated strictly behind `BuildConfig.DEBUG` and restricted to `localhost`/`127.0.0.1` only. Release builds reject intent automation.
+  - Enforced single-use pairing code consumption: `verify_and_consume_code` immediately invalidates pairing codes on successful handshake. Code replays are strictly rejected (`INVALID_PAIRING_CODE`).
+  - Implemented seamless session-based reconnection via `session_id` for network drop recovery without requiring code reuse.
+  - Verified disconnect behavior (`sessionId` cleared on disconnect) and automatic ADB reverse teardown on desktop shutdown via `MainWindow.closeEvent`.
+  - Built and verified both `assembleDebug` and `assembleRelease` APKs.
 
 ## Next milestone
 **Phase 5 — Canvas Persistence and Export**

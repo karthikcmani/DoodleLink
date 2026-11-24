@@ -16,6 +16,7 @@ class PairingManager:
         self.session_id: str = str(uuid.uuid4())
         self.current_code: str = ""
         self.code_generated_at: float = 0.0
+        self.is_code_consumed: bool = False
         self.generate_new_code()
 
     def generate_new_code(self) -> str:
@@ -23,6 +24,7 @@ class PairingManager:
         code_int = secrets.randbelow(1_000_000)
         self.current_code = f"{code_int:06d}"
         self.code_generated_at = time.time()
+        self.is_code_consumed = False
         self.session_id = str(uuid.uuid4())
         return self.current_code
 
@@ -31,11 +33,31 @@ class PairingManager:
         return (time.time() - self.code_generated_at) > self.code_ttl_seconds
 
     def verify_code(self, candidate_code: str) -> bool:
-        """Verify candidate pairing code using constant-time string comparison."""
-        if not candidate_code or self.is_code_expired:
+        """Verify candidate pairing code using constant-time string comparison without consuming."""
+        if not candidate_code or self.is_code_expired or self.is_code_consumed:
             return False
         clean_candidate = candidate_code.strip()
         return secrets.compare_digest(self.current_code, clean_candidate)
+
+    def verify_and_consume_code(self, candidate_code: str) -> bool:
+        """Verify candidate pairing code and invalidate it immediately upon success (one-time use)."""
+        if not candidate_code or self.is_code_expired or self.is_code_consumed:
+            return False
+        clean_candidate = candidate_code.strip()
+        if secrets.compare_digest(self.current_code, clean_candidate):
+            self.is_code_consumed = True
+            return True
+        return False
+
+    def verify_session(self, candidate_session: str) -> bool:
+        """Verify candidate session ID for seamless reconnection within the active session."""
+        if not candidate_session or not self.session_id:
+            return False
+        return secrets.compare_digest(self.session_id, candidate_session.strip())
+
+    def invalidate_session(self) -> None:
+        """Invalidate active session and generate a fresh session ID and code."""
+        self.generate_new_code()
 
     @staticmethod
     def get_local_ip_addresses() -> list[str]:

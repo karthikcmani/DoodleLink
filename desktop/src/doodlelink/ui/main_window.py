@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 from doodlelink.models.canvas_state import CanvasState
 from doodlelink.models.coordinate import CoordinateMapper, LogicalCanvas
 from doodlelink.models.stroke import ToolType
+from doodlelink.network.adb_manager import AdbManager
 from doodlelink.network.pairing import PairingManager
 from doodlelink.network.protocol import (
     build_clear_canvas,
@@ -384,8 +385,14 @@ class MainWindow(QMainWindow):
             msg = build_clear_canvas(self._next_sequence(), self.pairing_manager.session_id)
             self.server.broadcast_event(msg)
 
-    def closeEvent(self, event) -> None:
-        self.server.stop()
+    def closeEvent(self, event: QCloseEvent) -> None:
+        """Clean up background server and active ADB reverse port mappings on shutdown."""
+        if self.server and self.server.is_running:
+            self.server.stop()
+        try:
+            AdbManager().remove_reverse_port(port=self.server.port if self.server else 8765)
+        except Exception:
+            pass
         super().closeEvent(event)
 
     def toggle_fullscreen(self) -> None:

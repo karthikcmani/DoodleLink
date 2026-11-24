@@ -137,3 +137,36 @@ async def test_server_successful_pairing_and_events(server, qapp):
         bcast = json.loads(bcast_raw)
         assert bcast["type"] == "desktop_draw"
         assert bcast["data"] == 42
+
+
+@pytest.mark.asyncio
+async def test_replayed_pairing_code_rejected_and_session_reconnect_accepted(server, qapp):
+    uri = "ws://127.0.0.1:18765"
+    code = server.pairing_manager.current_code
+
+    # 1. First client connects with code -> succeeds and consumes code
+    async with websockets.connect(uri) as ws1:
+        pair_req = {"version": 1, "type": "pair", "code": code, "client_name": "Device 1"}
+        await ws1.send(json.dumps(pair_req))
+        resp_raw = await ws1.recv()
+        resp = json.loads(resp_raw)
+        assert resp["type"] == "pair_success"
+        session_id = resp["session_id"]
+
+    # 2. Replay attempt with same code -> rejected because code is consumed
+    async with websockets.connect(uri) as ws2:
+        replay_req = {"version": 1, "type": "pair", "code": code, "client_name": "Attacker"}
+        await ws2.send(json.dumps(replay_req))
+        resp2_raw = await ws2.recv()
+        resp2 = json.loads(resp2_raw)
+        assert resp2["type"] == "error"
+        assert resp2["code"] == "INVALID_PAIRING_CODE"
+
+    # 3. Legitimate reconnect with session_id -> succeeds
+    async with websockets.connect(uri) as ws3:
+        reconnect_req = {"version": 1, "type": "pair", "session_id": session_id, "client_name": "Device 1"}
+        await ws3.send(json.dumps(reconnect_req))
+        resp3_raw = await ws3.recv()
+        resp3 = json.loads(resp3_raw)
+        assert resp3["type"] == "pair_success"
+        assert resp3["session_id"] == session_id

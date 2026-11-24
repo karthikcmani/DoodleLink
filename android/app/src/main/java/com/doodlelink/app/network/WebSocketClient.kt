@@ -63,6 +63,7 @@ class WebSocketClient(
 
     fun connect(targetHost: String, targetPort: Int = 8765, code: String) {
         userDisconnected = false
+        sessionId = null
         host = targetHost.trim()
         port = targetPort
         pairingCode = code.trim()
@@ -86,8 +87,12 @@ class WebSocketClient(
             webSocket = okHttpClient.newWebSocket(request, object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
                     statusMessage = "Connected. Authenticating..."
-                    // Send pairing handshake
-                    val pairMsg = PairRequest(code = pairingCode)
+                    // Send pairing handshake: use active session_id for reconnection if available, else fresh pairing code
+                    val pairMsg = if (!sessionId.isNullOrBlank()) {
+                        PairRequest(session_id = sessionId)
+                    } else {
+                        PairRequest(code = pairingCode)
+                    }
                     val jsonStr = DoodleJson.json.encodeToString(pairMsg)
                     webSocket.send(jsonStr)
                 }
@@ -149,6 +154,7 @@ class WebSocketClient(
 
     fun disconnect() {
         userDisconnected = true
+        sessionId = null
         reconnectJob?.cancel()
         stopPingTimer()
         webSocket?.close(1000, "User disconnected")
@@ -208,6 +214,7 @@ class WebSocketClient(
                 "error" -> {
                     statusMessage = msg.message ?: "Server error (${msg.code})"
                     if (msg.code == "INVALID_PAIRING_CODE") {
+                        sessionId = null
                         userDisconnected = true // Don't loop reconnect on bad credentials
                         connectionState = ConnectionState.ERROR
                     }

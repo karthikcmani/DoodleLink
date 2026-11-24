@@ -161,9 +161,20 @@ class WhiteboardServer(QObject):
             self.client_disconnected.emit(addr_str)
             return
 
-        candidate_code = pair_data.get("code", "")
-        if not self.pairing_manager.verify_code(candidate_code):
-            await websocket.send(json.dumps(build_error("INVALID_PAIRING_CODE", "Incorrect or expired pairing code")))
+        candidate_code = pair_data.get("code")
+        candidate_session = pair_data.get("session_id")
+
+        is_reconnecting = bool(
+            candidate_session and self.pairing_manager.verify_session(candidate_session)
+        )
+        is_new_pairing = bool(
+            candidate_code and self.pairing_manager.verify_and_consume_code(candidate_code)
+        )
+
+        if not is_reconnecting and not is_new_pairing:
+            await websocket.send(
+                json.dumps(build_error("INVALID_PAIRING_CODE", "Incorrect, expired, or already-used pairing code"))
+            )
             await websocket.close(code=4003, reason="Unauthorized")
             self.client_disconnected.emit(addr_str)
             return

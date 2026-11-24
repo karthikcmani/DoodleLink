@@ -42,8 +42,10 @@ def validate_message(data: Any) -> tuple[bool, str | None]:
         return False, f"Invalid or missing message type: {msg_type}"
 
     if msg_type == "pair":
-        if not data.get("code") or not isinstance(data["code"], str):
-            return False, "Pair message requires string 'code'"
+        has_code = isinstance(data.get("code"), str) and bool(data["code"].strip())
+        has_session = isinstance(data.get("session_id"), str) and bool(data["session_id"].strip())
+        if not has_code and not has_session:
+            return False, "Pair message requires either string 'code' or 'session_id'"
 
     elif msg_type == "stroke_start":
         if not data.get("stroke_id"):
