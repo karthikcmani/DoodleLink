@@ -1,14 +1,12 @@
 # DoodleLink — Project Status
 
 **Last updated:** 2026-11-25  
-**Current phase:** Phase 0 — repository and engineering foundation  
-**Overall status:** Phase 0 completed and verified; ready for Phase 1.
+**Current phase:** Phase 1 — Desktop whiteboard foundation  
+**Overall status:** Phase 1 completed and verified; ready for Phase 2.
 
 ## Verified facts
 - **GitHub repository:** `https://github.com/karthikcmani/DoodleLink.git`
 - **Git branch:** `main` tracking `origin/main`
-- **Remote commit baseline:** `ee5d7f92da452a7e8ca18116acd639de486924ff` ("Initial commit" by Karthik C Mani preserving `LICENSE`)
-- **License:** MIT License verified and tracked
 - **Host OS:** Windows 11 (build 10.0.26300)
 - **Python environment:** Python 3.13.2 (64-bit)
 - **Desktop dependencies installed & verified:**
@@ -17,24 +15,23 @@
   - `pytest` 9.1.1
   - `pytest-asyncio` 1.4.0
   - `ruff` 0.14.4
-- **Java environment:**
-  - `JAVA_HOME`: `C:\Program Files\Eclipse Adoptium\jdk-21.0.13.9-hotspot\`
-  - OpenJDK 21.0.13 LTS (Temurin-21.0.13+9)
-  - `javac` 21.0.13
-- **Android SDK environment:**
-  - `ANDROID_HOME`: `C:\Users\Asus\AppData\Local\Android\Sdk`
-  - Platforms: `android-34`, `android-35`, `android-36`, `android-37`
-  - Build-tools: `34.0.0`, `35.0.0`, `35.0.1`, `36.0.0`, `37.0.0`
-  - Platform tools: ADB 1.0.41 (v37.0.0-14910828)
-  - Command-line tools: version 22.0 (`sdkmanager`, `avdmanager`)
-- **Target test device:** Nothing Phone (3a), 8 GB / 256 GB (no device currently connected via USB)
-- **Directory layout established:**
-  - Root: `AGENTS.md`, `README.md`, `LICENSE`, `.gitignore`
-  - `desktop/`: `requirements.txt`
-  - `android/`: `README.md`
-  - `shared/protocol/`: `README.md`
-  - `docs/`: `PROJECT_SPEC.md`, `PROJECT_STATUS.md`
-  - `tests/`: `README.md`
+- **Shared Protocol Baseline:**
+  - Protocol v1 JSON schema established at `shared/protocol/schema_v1.json`
+  - Normalized coordinates `[0.0, 1.0] x [0.0, 1.0]` with timestamps and pressure
+  - Reusable serialization/deserialization for future WebSocket transport
+- **Desktop Application Architecture (`desktop/src/doodlelink`):**
+  - `models/stroke.py`: `Point`, `Stroke`, `ToolType` (pure Python dataclasses, bounded coordinate clamping, JSON serialization)
+  - `models/coordinate.py`: `CoordinateMapper`, `LogicalCanvas`, `ViewportRect` (16:9 aspect-ratio letterbox/pillarbox geometry, bidirectional coordinate conversions)
+  - `models/canvas_state.py`: `CanvasState` (stroke management, pointer down/move/up/cancel lifecycle, undo/redo stacks, undoable canvas clear, observer change events)
+  - `ui/canvas_widget.py`: `CanvasWidget` (PySide6 `QPainter` rendering, antialiasing, dynamic cursor, pen/eraser modes, mouse event dispatch)
+  - `ui/color_palette.py`: `ColorPalette` (10-color quick palette + QColorDialog picker)
+  - `ui/toolbar.py`: `WhiteboardToolbar` (Pen/Eraser toggles, color palette, preset size chips, slider, undo/redo/clear, fullscreen presentation button, status badge)
+  - `ui/main_window.py`: `MainWindow` (status bar with live normalized/pixel coordinate readout and stroke count, comprehensive keyboard shortcuts: `Ctrl+Z`, `Ctrl+Y`, `Ctrl+Shift+Z`, `Ctrl+L`, `F11`, `Escape`, `P`, `E`, `1-4`)
+  - `main.py` & `desktop/run.py`: executable launcher
+- **Test Results:**
+  - 23 unit and GUI tests in `tests/`: 23 passed in 0.21s (0 warnings)
+  - Static analysis: `ruff check desktop tests` passed with 0 errors
+  - Application runtime verification: launched headless with offscreen QPA, initialized UI, processed events, and closed cleanly with exit code 0.
 
 ## Phase 0 milestone checklist
 - [x] Place `AGENTS.md` at repository root.
@@ -48,12 +45,24 @@
 - [x] Pin and install desktop requirements (`desktop/requirements.txt`), verifying PySide6 6.12.0 and pytest.
 - [x] Verify Java (JDK 21) and Android SDK (platforms 34+, build-tools 34+, adb).
 - [x] Commit foundation files with Conventional Commit message (`1dc6a25`).
-- [x] Push to `origin/main` (`ee5d7f9..1dc6a25`).
+- [x] Push to `origin/main` (`ee5d7f9..feb7a93`).
+
+## Phase 1 milestone checklist
+- [x] Implement normalized coordinate stroke model (`Point`, `Stroke`, `ToolType`).
+- [x] Implement viewport aspect ratio mapper (`CoordinateMapper`).
+- [x] Implement decoupled canvas state and undo/redo logic (`CanvasState`).
+- [x] Implement interactive PySide6 drawing canvas (`CanvasWidget`).
+- [x] Implement whiteboard toolbar with tools, palette, thickness, and actions (`WhiteboardToolbar`).
+- [x] Implement main window with keyboard shortcuts and coordinate status bar (`MainWindow`).
+- [x] Establish Protocol v1 schema (`shared/protocol/schema_v1.json`).
+- [x] Write comprehensive unit tests for models, coordinates, canvas state, and UI.
+- [x] Verify test execution (`pytest`: 23 passed) and static checks (`ruff`: clean).
+- [x] Verify application launch and rendering.
+- [ ] Commit Phase 1 milestone with Conventional Commit and push to `origin/main`.
 
 ## Next milestone
-**Phase 1 — Desktop whiteboard foundation**
-- Implement initial PySide6 canvas window (`desktop/`).
-- Implement logical stroke model with normalized coordinates.
-- Implement pen color/width selection, eraser, undo/redo stack, and canvas clearing.
-- Implement standalone mouse drawing.
-- Unit tests for stroke data model, undo/redo, and coordinate mapping.
+**Phase 2 — Android drawing foundation**
+- Initialize native Android project with Gradle, Kotlin, and Jetpack Compose (`android/`).
+- Implement touch drawing surface and normalized logical stroke model matching `shared/protocol`.
+- Implement local tool selection (Pen, Eraser, Color, Brush size), undo/redo, and canvas clear.
+- Test lifecycle events, orientation changes, and build debug APK.
